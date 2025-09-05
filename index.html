@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eco Adventure — Save the World</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Inter", Arial, sans-serif;
+      background: #000;
+      overflow: hidden;
+    }
+    .game {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      position: relative;
+      background: #000;
+    }
+    .background {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      z-index: 0;
+      transition: background-image 1s ease;
+    }
+    .character {
+      position: absolute;
+      bottom: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-height: 60%;
+      z-index: 1;
+      display: none; /* hidden during intro */
+    }
+    .textbox {
+      position: relative;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 20px;
+      width: 95%;
+      max-width: 900px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      z-index: 2;
+      font-size: 1.2rem;
+      line-height: 1.6;
+      min-height: 160px;
+      box-sizing: border-box;
+    }
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .choice-btn, .next-btn {
+      background: #fff;
+      color: #000;
+      padding: 14px 18px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+      font-size: 1rem;
+    }
+    .choice-btn:hover, .next-btn:hover {
+      background: #16a34a;
+      color: #fff;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      z-index: 5;
+      text-align: center;
+      padding: 20px;
+    }
+    .overlay h2 { margin: 10px 0; }
+    .btn {
+      padding: 12px 18px;
+      margin-top: 20px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      background: #16a34a;
+      color: #fff;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="game">
+    <div id="bg" class="background"></div>
+    <img id="char" class="character" src="assets/happy.png" alt="Character" />
+
+    <div class="textbox">
+      <div id="narration"></div>
+      <div id="choices" class="choices"></div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOver" class="overlay">
+      <img id="gameOverImg" style="max-width:80%; border-radius:8px; margin-bottom:20px;" />
+      <h2>The World Ended</h2>
+      <p id="gameOverText">Your choice harmed the planet.</p>
+      <button class="btn" onclick="retryScene()">Try Again</button>
+      <button class="btn" onclick="restart()">Restart Game</button>
+    </div>
+
+    <!-- Success -->
+    <div id="success" class="overlay">
+      <div style="font-size:48px">🌍✨</div>
+      <h2>You Saved the World!</h2>
+      <p id="finalScore"></p>
+      <div id="finalBadge" style="margin-top:10px;font-weight:bold;"></div>
+      <button class="btn" onclick="restart()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // Intro sequence
+    const introScenes = [
+      {
+        bg: "assets/lush.jpeg",
+        text: "Long ago, this world was alive… Rivers sparkled under the sun, forests breathed with life, and every corner of Earth sang with the harmony of nature. Humans were blessed with a choice — to be guardians greater than angels."
+      },
+      {
+        bg: "assets/destroyed.jpeg",
+        text: "But blinded by greed, they chose otherwise. The rivers ran dry, the skies filled with poison, and the green was reduced to dust. A paradise became a wasteland… all because of choices made without care."
+      },
+      {
+        bg: "assets/bedroom.jpg",
+        text: "Now, a new chance begins with you. Every decision you make will shape the fate of this world. Will you repeat the mistakes of the past… or save what remains?",
+        last: true
+      }
+    ];
+
+    const scenes = [
+      {
+        bg: "assets/bedroom.jpg",
+        char: "assets/happy.png",
+        text: "You wake up thirsty. There’s a steel bottle and a plastic bottle.",
+        choices: [
+          { text: "Grab the plastic bottle", good: false, outcome: "Plastic waste piles up. The oceans choke.", gameOverImg: "assets/ocean_gameover.jpg" },
+          { text: "Grab the steel bottle", good: true, outcome: "You refill your steel bottle. No waste today." }
+        ]
+      },
+      {
+        bg: "assets/classroom.jpg",
+        char: "assets/happy.png",
+        text: "At school you finish a snack. Wrapper in hand, the bin is a few steps away.",
+        choices: [
+          { text: "Drop it on the ground", good: false, outcome: "The wrapper clogs drains and causes floods.", gameOverImg: "assets/flood_gameover.jpg" },
+          { text: "Walk to the bin", good: true, outcome: "You bin it properly. Streets stay clean." }
+        ]
+      },
+      {
+        bg: "assets/street.png",
+        char: "assets/happy.png",
+        text: "You need to go to a shop 500m away. Car or walk?",
+        choices: [
+          { text: "Take the car", good: false, outcome: "Extra emissions create thick smog.", gameOverImg: "assets/smog_gameover.jpg" },
+          { text: "Walk or cycle", good: true, outcome: "You walk. Healthy body, clear air." }
+        ]
+      },
+      {
+        bg: "assets/park.jpg",
+        char: "assets/happy.png",
+        text: "The neighborhood is planting trees. Join or skip?",
+        choices: [
+          { text: "Skip and stay home", good: false, outcome: "Without saplings, droughts rise.", gameOverImg: "assets/drought_gameover.jpg" },
+          { text: "Join and plant", good: true, outcome: "You plant a sapling. Nature thanks you." }
+        ]
+      }
+    ];
+
+    let current = 0;
+    let score = 0;
+    let introIndex = 0;
+
+    const bgEl = document.getElementById("bg");
+    const charEl = document.getElementById("char");
+    const narrationEl = document.getElementById("narration");
+    const choicesEl = document.getElementById("choices");
+    const gameOverEl = document.getElementById("gameOver");
+    const gameOverText = document.getElementById("gameOverText");
+    const gameOverImg = document.getElementById("gameOverImg");
+    const successEl = document.getElementById("success");
+    const finalScoreEl = document.getElementById("finalScore");
+    const finalBadgeEl = document.getElementById("finalBadge");
+
+    function renderIntro() {
+      const s = introScenes[introIndex];
+      bgEl.style.backgroundImage = `url(${s.bg})`;
+      narrationEl.textContent = s.text;
+      choicesEl.innerHTML = `<button class="next-btn">${s.last ? "Begin" : "Next"}</button>`;
+      choicesEl.querySelector("button").onclick = () => {
+        introIndex++;
+        if (introIndex >= introScenes.length) {
+          charEl.style.display = "block"; // sprite appears
+          renderScene();
+        } else {
+          renderIntro();
+        }
+      };
+    }
+
+    function renderScene() {
+      const s = scenes[current];
+      bgEl.style.backgroundImage = `url(${s.bg})`;
+      charEl.src = s.char;
+      narrationEl.textContent = s.text;
+      choicesEl.innerHTML = "";
+      s.choices.forEach(c => {
+        const btn = document.createElement("button");
+        btn.className = "choice-btn";
+        btn.textContent = c.text;
+        btn.onclick = () => handleChoice(c);
+        choicesEl.appendChild(btn);
+      });
+    }
+
+    function handleChoice(choice) {
+      if (choice.good) {
+        score += 10;
+        narrationEl.textContent = choice.outcome + " ✅";
+        choicesEl.innerHTML = `<button class="choice-btn">${current+1 === scenes.length ? "See Ending" : "Continue"}</button>`;
+        choicesEl.querySelector("button").onclick = () => {
+          current++;
+          if (current >= scenes.length) showSuccess();
+          else renderScene();
+        };
+      } else {
+        gameOverEl.style.display = "flex";
+        gameOverText.textContent = choice.outcome;
+        if (choice.gameOverImg) gameOverImg.src = choice.gameOverImg;
+      }
+    }
+
+    function retryScene() {
+      gameOverEl.style.display = "none";
+      renderScene();
+    }
+
+    function showSuccess() {
+      successEl.style.display = "flex";
+      finalScoreEl.textContent = `Score: ${score} / ${scenes.length*10}`;
+      let badge = "Eco Learner";
+      if (score >= 30) badge = "Eco Saver";
+      if (score >= 40) badge = "Eco Warrior";
+      finalBadgeEl.textContent = badge;
+    }
+
+    function restart() {
+      current = 0; score = 0;
+      introIndex = 0;
+      charEl.style.display = "none";
+      gameOverEl.style.display = "none";
+      successEl.style.display = "none";
+      renderIntro();
+    }
+
+    // start with intro
+    renderIntro();
+  </script>
+</body>
+</html>
+
